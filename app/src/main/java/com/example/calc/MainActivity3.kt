@@ -1,8 +1,10 @@
 package com.example.calc
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ContentUris
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
@@ -13,37 +15,40 @@ import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.example.calc.databinding.ActivityMain3Binding
 import java.io.IOException
 
-
 class MainActivity3 : AppCompatActivity() {
     private var mediaPlayer: MediaPlayer? = null
-
-    //@SuppressLint("SdCardPath")
-    //private val filePath = "Internal shared storage/Zelda.mp3"
-        //private val audioPath = "/Internal shared storage/emulated/0/Zelda.mp3"
     private val targetFileName = "Zelda.mp3" // Имя файла, который мы ищем
     lateinit var binding3: ActivityMain3Binding
-
-    //private lateinit var mediaPlayer: MediaPlayer
-    private lateinit var searchInput: EditText
-
     private lateinit var seekBar: SeekBar
     private lateinit var runnable: Runnable
     private val handler = Handler()
     private var delay = 1000L
     var isPlaying = false
     private var currentTrackIndex = 0
-    /*private val tracks = listOf(
-        R.raw.em,
-        R.raw.tech,
-    )*/
-    //private var tracks = listOf<String>()
-    //private val tracks = loadMusicFromStorage()
+
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            findAndPlaySpecificAudio()
+        } else {
+            Toast.makeText(
+                this,
+                "Доступ к файлам запрещен. Функциональность плеера будет ограничена.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,28 +58,48 @@ class MainActivity3 : AppCompatActivity() {
         val view3: LinearLayout = binding3.root
         setContentView(view3)
 
-
-        //mediaPlayer = MediaPlayer.create(this, tracks)
-        /*seekBar = findViewById(R.id.seekBar)
-        seekBar.max = mediaPlayer.duration
-        runnable = Runnable {
-            seekBar.progress = mediaPlayer.currentPosition
-            handler.postDelayed(runnable, delay)
-        }*/
-        //loadTrack(currentTrackIndex)            ////
         binding3.buttonPlay.setOnClickListener {
-            //startPlayback()
-            //playAudio()
-            //playFirstAudioFromMediaStore()
-            findAndPlaySpecificAudio()
-
+            checkPermissionAndPlay()
         }
 
         binding3.buttonBack.setOnClickListener() {
             // playPreviousTrack()
         }
+
         binding3.buttonNext.setOnClickListener() {
-            //playNextTrack()
+            // playNextTrack()
+        }
+    }
+
+    private fun checkPermissionAndPlay() {
+        when {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED -> {
+
+                findAndPlaySpecificAudio()
+            }
+
+            ActivityCompat.shouldShowRequestPermissionRationale(
+                this,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) -> {
+
+                Toast.makeText(
+                    this,
+                    "Для воспроизведения музыки с устройства необходимо разрешение на доступ к файлам",
+                    Toast.LENGTH_LONG
+                ).show()
+
+
+                requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+
+            else -> {
+               
+                requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
         }
     }
 
@@ -84,7 +109,6 @@ class MainActivity3 : AppCompatActivity() {
             MediaStore.Audio.Media.DISPLAY_NAME,
             MediaStore.Audio.Media.RELATIVE_PATH
         )
-
 
         val selection = "${MediaStore.Audio.Media.DISPLAY_NAME} = ?"
         val selectionArgs = arrayOf(targetFileName)
@@ -109,7 +133,7 @@ class MainActivity3 : AppCompatActivity() {
 
                 playAudio(contentUri, displayName)
             } else {
-                Toast.makeText(this, "Файл,который мы ищем $targetFileName не найден", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Файл $targetFileName не найден", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -123,19 +147,19 @@ class MainActivity3 : AppCompatActivity() {
 
                 setOnPreparedListener { mp ->
                     mp.start()
-                    /*Toast.makeText(
-                        this@MediaStoreAudioPlayerActivity,
+                    Toast.makeText(
+                        this@MainActivity3,
                         "Воспроизводится: $title",
                         Toast.LENGTH_SHORT
-                    ).show()*/
+                    ).show()
                 }
 
                 setOnErrorListener { _, _, _ ->
-                    /*Toast.makeText(
-                        this@MediaStoreAudioPlayerActivity,
+                    Toast.makeText(
+                        this@MainActivity3,
                         "Ошибка воспроизведения",
                         Toast.LENGTH_SHORT
-                    ).show()*/
+                    ).show()
                     true
                 }
             }
